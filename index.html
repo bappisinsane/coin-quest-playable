@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Coin Quest - Interactive Video & Playable Ad</title>
+  <style>
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none; 
+      -webkit-user-select: none;
+    }
+    body {
+      background: #090d16;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Phone Frame Container */
+    #game-container {
+      width: 360px;
+      height: 640px;
+      /* Generated Dungeon Art Background */
+      background: url('Gemini_Generated_Image_l0o45el0o45el0o4.jpg') center/cover no-repeat;
+      border-radius: 28px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.3);
+      border: 4px solid #facc15;
+    }
+
+    /* Video Player Layer */
+    #intro-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 20;
+      transition: opacity 0.6s ease;
+    }
+
+    /* Skip Video Button */
+    .skip-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 21;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(250, 204, 21, 0.5);
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+
+    /* Interactive Game UI Wrapper (Hidden during video) */
+    #playable-ui {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease;
+    }
+
+    #playable-ui.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Dark Overlay Gradient */
+    .overlay-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(0,0,0,0.2) 40%, rgba(15, 23, 42, 0.85) 100%);
+      pointer-events: none;
+    }
+
+    .header {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding-top: 24px;
+      color: #fff;
+    }
+    
+    .title {
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #facc15;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.9), 0 0 10px rgba(250, 204, 21, 0.6);
+    }
+    
+    .score-board {
+      margin-top: 6px;
+      font-size: 22px;
+      color: #ffffff;
+      font-weight: 800;
+      background: rgba(0, 0, 0, 0.6);
+      display: inline-block;
+      padding: 6px 20px;
+      border-radius: 20px;
+      border: 1px solid rgba(250, 204, 21, 0.4);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    /* Chest Interactive Area */
+    .chest-area {
+      position: absolute;
+      top: 52%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      text-align: center;
+      z-index: 3;
+    }
+    
+    .chest-icon {
+      font-size: 90px;
+      filter: drop-shadow(0 12px 20px rgba(0,0,0,0.8));
+      transition: transform 0.1s ease;
+      display: inline-block;
+    }
+    
+    .chest-area:active .chest-icon {
+      transform: scale(0.9);
+    }
+
+    /* Floating Gold Particles */
+    .coin-pop {
+      position: absolute;
+      font-size: 32px;
+      font-weight: 900;
+      color: #facc15;
+      text-shadow: 0 3px 6px #000, 0 0 12px rgba(250, 204, 21, 0.8);
+      pointer-events: none;
+      z-index: 10;
+      animation: floatUp 0.85s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(0.7); }
+      50% { transform: translateY(-50px) scale(1.3); }
+      100% { opacity: 0; transform: translateY(-90px) scale(1); }
+    }
+
+    /* Main Action Button */
+    .btn-spin {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 44px;
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+      border: 2px solid #86efac;
+      border-radius: 50px;
+      box-shadow: 0 8px 0 #166534, 0 15px 25px rgba(0,0,0,0.6);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      z-index: 3;
+    }
+
+    .btn-spin:active {
+      transform: translateX(-50%) translateY(4px);
+      box-shadow: 0 4px 0 #166534;
+    }
+
+    /* Endcard Popup Overlay */
+    .endcard {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.95)), 
+                  url('Gemini_Generated_Image_n42nomn42nomn42n.jpg') center/cover no-repeat;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 15;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .endcard.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .endcard-title {
+      color: #facc15;
+      font-size: 36px;
+      font-weight: 900;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+      margin-bottom: 8px;
+    }
+
+    .endcard-sub {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .cta-btn {
+      padding: 18px 40px;
+      font-size: 22px;
+      font-weight: 900;
+      color: #ffffff;
+      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+      border: 2px solid #93c5fd;
+      border-radius: 14px;
+      box-shadow: 0 6px 0 #1e40af, 0 12px 20px rgba(0,0,0,0.5);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Screen Shake Game Juice Effect */
+    .shake {
+      animation: shake 0.22s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-8px, 6px); }
+      40% { transform: translate(8px, -6px); }
+      60% { transform: translate(-6px, -3px); }
+      80% { transform: translate(6px, 3px); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <!-- 1. Video Player Phase -->
+  <video id="intro-video" autoplay muted playsinline>
+    <source src="ad-video.mp4" type="video/mp4">
+  </video>
+  <button class="skip-btn" id="skip-btn">SKIP ⏭</button>
+
+  <!-- 2. Playable Game Phase (Fades in when video finishes) -->
+  <div id="playable-ui">
+    <div class="overlay-gradient"></div>
+
+    <div class="header">
+      <img src="Gemini_Generated_Image_7p0su17p0su17p0s.jpg" alt="Hero Character" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #facc15; box-shadow: 0 4px 12px rgba(0,0,0,0.8); margin-bottom: 6px; object-fit: cover;">
+      <div class="title">COIN QUEST</div>
+      <div class="score-board">GOLD: <span id="score">0</span></div>
+    </div>
+
+    <div class="chest-area" id="chest-btn">
+      <div class="chest-icon" id="chest">💎</div>
+    </div>
+
+    <button class="btn-spin" id="spin-btn">TAP TO OPEN</button>
+
+    <!-- Jackpot Download End-Card -->
+    <div class="endcard" id="endcard">
+      <div class="endcard-title">JACKPOT!</div>
+      <div class="endcard-sub">You claimed 3,000 Gold Coins!</div>
+      <button class="cta-btn" onclick="alert('Redirecting to the App Store...')">DOWNLOAD NOW</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const videoEl = document.getElementById('intro-video');
+  const skipBtn = document.getElementById('skip-btn');
+  const playableUi = document.getElementById('playable-ui');
+
+  // Transition from Video to Interactive Playable UI
+  function showPlayableGame() {
+    videoEl.style.opacity = '0';
+    skipBtn.style.display = 'none';
+    
+    setTimeout(() => {
+      videoEl.style.display = 'none';
+      playableUi.classList.add('active');
+    }, 600);
+  }
+
+  // Trigger when video ends automatically
+  videoEl.addEventListener('ended', showPlayableGame);
+
+  // Trigger if user taps skip
+  skipBtn.addEventListener('click', () => {
+    videoEl.pause();
+    showPlayableGame();
+  });
+
+  // Fallback trigger in case autoplay is blocked or fails
+  videoEl.addEventListener('error', showPlayableGame);
+
+  // Playable Game Mechanics
+  let score = 0;
+  let clicks = 0;
+  const maxClicks = 3;
+
+  const scoreEl = document.getElementById('score');
+  const containerEl = document.getElementById('game-container');
+  const endcardEl = document.getElementById('endcard');
+  const spinBtn = document.getElementById('spin-btn');
+  const chestBtn = document.getElementById('chest-btn');
+
+  function triggerJuice() {
+    if (clicks >= maxClicks) return;
+
+    clicks++;
+    score += 1000;
+    scoreEl.innerText = score.toLocaleString();
+
+    // Screen Shake Effect
+    containerEl.classList.remove('shake');
+    void containerEl.offsetWidth;
+    containerEl.classList.add('shake');
+
+    // Floating Gold Particle Effect
+    const pop = document.createElement('div');
+    pop.className = 'coin-pop';
+    pop.innerText = '+1,000 GOLD!';
+    pop.style.left = '25%';
+    pop.style.top = '48%';
+    containerEl.appendChild(pop);
+
+    setTimeout(() => pop.remove(), 850);
+
+    // Button Progression
+    if (clicks === 1) {
+      spinBtn.innerText = 'TAP AGAIN!';
+    } else if (clicks === 2) {
+      spinBtn.innerText = 'ONE MORE!';
+    }
+
+    // Endcard Overlay Trigger
+    if (clicks >= maxClicks) {
+      setTimeout(() => {
+        endcardEl.classList.add('active');
+      }, 500);
+    }
+  }
+
+  chestBtn.addEventListener('click', triggerJuice);
+  spinBtn.addEventListener('click', triggerJuice);
+</script>
+
+</body>
+</html>
